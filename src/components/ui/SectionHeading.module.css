@@ -1,0 +1,66 @@
+.container {
+  margin-bottom: var(--space-10);
+  max-width: 760px;
+}
+
+.left {
+  text-align: left;
+  margin-right: auto;
+}
+
+.center {
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.right {
+  text-align: right;
+  margin-left: auto;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-brand-primary);
+  margin-bottom: var(--space-3);
+  padding: 0.25rem 0.75rem;
+  background-color: var(--color-brand-primary-light);
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(22, 143, 245, 0.2);
+}
+
+.eyebrowDark {
+  background-color: rgba(22, 143, 245, 0.15);
+  color: var(--color-brand-cyan);
+  border-color: rgba(80, 171, 254, 0.3);
+}
+
+.title {
+  margin-bottom: var(--space-4);
+  line-height: var(--line-height-tight);
+}
+
+.titleLight {
+  color: var(--text-primary);
+}
+
+.titleDark {
+  color: #ffffff;
+}
+
+.description {
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-relaxed);
+  color: var(--text-secondary);
+}
+
+.descDark {
+  color: var(--text-inverse-muted);
+}
+

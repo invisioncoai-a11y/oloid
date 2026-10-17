@@ -1,0 +1,69 @@
+/* ==========================================================================
+   CONTACT PAGE STYLES
+   ========================================================================== */
+
+.inquiryCard {
+  background: #ffffff;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-md);
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .inquiryCard {
+    padding: var(--space-8);
+  }
+}
+
+.formGrid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .formRow {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.deskCard {
+  background: var(--gradient-surface-dark);
+  color: #ffffff;
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-xl);
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .deskCard {
+    padding: var(--space-8);
+  }
+}
+
+.directEmailCallout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-brand-primary-light);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(22, 143, 245, 0.2);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+

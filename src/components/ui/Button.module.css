@@ -1,0 +1,120 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-family: var(--font-family-sans);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  line-height: 1.35;
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 100%;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+}
+
+/* Sizes */
+.sm {
+  padding: 0.5rem 0.875rem;
+  font-size: var(--font-size-xs);
+}
+
+.md {
+  padding: 0.75rem 1.25rem;
+  font-size: var(--font-size-sm);
+}
+
+.lg {
+  padding: 0.95rem 1.75rem;
+  font-size: var(--font-size-base);
+}
+
+@media (max-width: 640px) {
+  .button {
+    white-space: normal;
+    text-align: center;
+  }
+
+  .lg {
+    padding: 0.75rem 1.25rem;
+    font-size: var(--font-size-sm);
+  }
+}
+
+/* Variants */
+.primary {
+  background: var(--gradient-brand);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(22, 143, 245, 0.3);
+}
+
+.primary:hover {
+  background: linear-gradient(135deg, #3fa1fe 0%, #0d7fe8 50%, #0056a6 100%);
+  color: #ffffff;
+  box-shadow: 0 6px 20px rgba(22, 143, 245, 0.45);
+  transform: translateY(-1px);
+}
+
+.secondary {
+  background-color: var(--color-brand-navy-dark);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.secondary:hover {
+  background-color: var(--color-brand-navy-deep);
+  color: #ffffff;
+  border-color: var(--color-brand-primary);
+  transform: translateY(-1px);
+}
+
+.outline {
+  background-color: transparent;
+  color: var(--text-primary);
+  border-color: var(--border-medium);
+}
+
+.outline:hover {
+  border-color: var(--color-brand-primary);
+  color: var(--color-brand-primary);
+  background-color: var(--color-brand-primary-light);
+}
+
+.outlineLight {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(8px);
+}
+
+.outlineLight:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-color: #ffffff;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.ghost {
+  background-color: transparent;
+  color: var(--color-brand-primary);
+}
+
+.ghost:hover {
+  background-color: var(--color-brand-primary-light);
+  color: var(--color-brand-primary-hover);
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+

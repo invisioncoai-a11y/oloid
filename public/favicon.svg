@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 200" fill="none">
+  <defs>
+    <linearGradient id="oloid-grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#50ABFE"/>
+      <stop offset="50%" stop-color="#168FF5"/>
+      <stop offset="100%" stop-color="#0165C3"/>
+    </linearGradient>
+    <linearGradient id="oloid-grad2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0052A3"/>
+      <stop offset="50%" stop-color="#0B7EFF"/>
+      <stop offset="100%" stop-color="#38A2FF"/>
+    </linearGradient>
+  </defs>
+  <!-- Outer twisted teardrop shape -->
+  <path d="M80,10 C125,70 160,120 150,155 C140,190 95,200 65,195 C30,190 5,160 5,120 C5,75 50,30 80,10 Z" fill="url(#oloid-grad1)"/>
+  <!-- Front sweeping loop -->
+  <path d="M80,10 C100,50 145,105 140,145 C135,175 105,195 70,195 C40,195 15,170 15,130 C15,90 55,40 80,10 Z" fill="url(#oloid-grad2)"/>
+  <!-- Inner negative droplet -->
+  <path d="M80,85 C92,105 92,125 80,140 C68,125 68,105 80,85 Z" fill="#FFFFFF"/>
+</svg>

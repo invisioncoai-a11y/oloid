@@ -1,0 +1,66 @@
+# ==============================================================================
+# OLOID Corporate Portal — Apache / LiteSpeed Configuration (Hostinger)
+# Supports Single Page Application (SPA) HTML5 History PushState Routing
+# ==============================================================================
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Ensure HTTPS redirection in production
+  RewriteCond %{HTTPS} off
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  # Canonical domain redirection to https://oloid.company
+  RewriteCond %{HTTP_HOST} ^www\.oloid\.company$ [NC]
+  RewriteRule ^(.*)$ https://oloid.company/$1 [L,R=301]
+
+  # If an existing file or directory is requested, serve it directly
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Otherwise, route all requests to index.html for React Router handling
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# ==============================================================================
+# Security Headers
+# ==============================================================================
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "SAMEORIGIN"
+  Header set X-XSS-Protection "1; mode=block"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+  Header set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+</IfModule>
+
+# ==============================================================================
+# Browser Caching & Compression (Optimizes Lighthouse Performance)
+# ==============================================================================
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresDefault "access plus 1 month"
+
+  # HTML documents (short cache for quick updates)
+  ExpiresByType text/html "access plus 1 hour"
+
+  # Data & Manifests
+  ExpiresByType application/json "access plus 1 day"
+  ExpiresByType application/xml "access plus 1 day"
+  ExpiresByType text/xml "access plus 1 day"
+
+  # Static Assets (Vite hashes file names, safe to cache long-term)
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+  ExpiresByType image/x-icon "access plus 1 year"
+  ExpiresByType font/woff2 "access plus 1 year"
+</IfModule>
+
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css application/javascript application/json image/svg+xml
+</IfModule>
+
