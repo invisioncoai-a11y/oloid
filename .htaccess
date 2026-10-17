@@ -1,0 +1,78 @@
+# ==============================================================================
+# OLOID Corporate Portal — Apache / LiteSpeed Configuration (Hostinger)
+# Supports Single Page Application (SPA) HTML5 History PushState Routing
+# ==============================================================================
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Ensure HTTPS redirection in production
+  RewriteCond %{HTTPS} off
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  # Canonical domain redirection to https://oloid.company
+  RewriteCond %{HTTP_HOST} ^www\.oloid\.company$ [NC]
+  RewriteRule ^(.*)$ https://oloid.company/$1 [L,R=301]
+
+  # ------------------------------------------------------------------------------
+  # Repository Watchdog — Autonomous Service Suspension Check
+  # Returns HTTP 503 if the repository deletion marker exists outside public_html
+  # ------------------------------------------------------------------------------
+  RewriteCond %{DOCUMENT_ROOT}/../.site_disabled_marker -f [OR]
+  RewriteCond %{DOCUMENT_ROOT}/../watchdog/.site_disabled_marker -f [OR]
+  RewriteCond %{DOCUMENT_ROOT}/.site_disabled_marker -f
+  RewriteRule ^ - [R=503,L]
+
+  # If an existing file or directory is requested, serve it directly
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Otherwise, route all requests to index.html for React Router handling
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# Custom 503 Service Unavailable Response
+ErrorDocument 503 "<html><head><title>503 Service Unavailable</title><meta name='robots' content='noindex, nofollow'><style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#0b192b;color:#ffffff;text-align:center;padding:20px;box-sizing:border-box}div{max-width:540px;background:#0f2238;padding:40px;border-radius:12px;border:1px solid rgba(22,143,245,0.2)}h1{color:#168ff5;font-size:24px;margin-bottom:12px}p{color:#94a3b8;font-size:14px;line-height:1.6}</style></head><body><div><h1>503 Service Temporarily Unavailable</h1><p>The service is temporarily offline for maintenance or administrative verification. Please contact support or try again later.</p></div></body></html>"
+
+# ==============================================================================
+# Security Headers
+# ==============================================================================
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "SAMEORIGIN"
+  Header set X-XSS-Protection "1; mode=block"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+  Header set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+</IfModule>
+
+# ==============================================================================
+# Browser Caching & Compression (Optimizes Lighthouse Performance)
+# ==============================================================================
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresDefault "access plus 1 month"
+
+  # HTML documents (short cache for quick updates)
+  ExpiresByType text/html "access plus 1 hour"
+
+  # Data & Manifests
+  ExpiresByType application/json "access plus 1 day"
+  ExpiresByType application/xml "access plus 1 day"
+  ExpiresByType text/xml "access plus 1 day"
+
+  # Static Assets (Vite hashes file names, safe to cache long-term)
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+  ExpiresByType image/x-icon "access plus 1 year"
+  ExpiresByType font/woff2 "access plus 1 year"
+</IfModule>
+
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css application/javascript application/json image/svg+xml
+</IfModule>
+
