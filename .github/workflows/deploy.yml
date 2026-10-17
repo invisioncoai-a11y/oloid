@@ -1,104 +1,149 @@
-name: Production Build & Hostinger Deploy
+name: OLOID — Build and deploy to Hostinger
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Deploy the validated build to Hostinger'
+        required: true
+        type: boolean
+        default: false
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: hostinger-deploy
+  group: oloid-hostinger-deployment
   cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
-    name: Build & Publish to hostinger-deploy Branch
+  build:
+    name: Validate and build React
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Source Code
+      - name: Checkout main
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node.js Environment
+      - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
-
-      - name: Install Dependencies
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
         run: npm ci
-
-      - name: Code Quality & Lint Audit
+      - name: Lint
         run: npm run lint
-
-      - name: Build Static Production Distribution
+      - name: Build
         run: npm run build
-
-      - name: Verify Distribution Payload Integrity
+      - name: Check build contents
+        shell: bash
         run: |
-          # Guarantee .htaccess is present in dist
-          if [ -f .htaccess ]; then
-            cp -f .htaccess dist/.htaccess
-          fi
+          set -euo pipefail
+          test -s dist/index.html
+          test -s dist/.htaccess
+          test -d dist/assets
+          test -f dist/favicon.ico
+          test -f dist/robots.txt
+          test -f dist/sitemap.xml
+      - name: Save production build
+        uses: actions/upload-artifact@v4
+        with:
+          name: oloid-static-site
+          path: dist/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
 
-          echo "=== Auditing dist/ output directory ==="
-          ls -la dist/
+  deploy:
+    name: Deploy directly to Hostinger with SSH
+    needs: build
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.deploy == true) || (github.event_name == 'push' && vars.HOSTINGER_AUTO_DEPLOY == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch validated production build
+        uses: actions/download-artifact@v4
+        with:
+          name: oloid-static-site
+          path: dist
 
-          # Confirm mandatory static hosting files
-          test -f dist/index.html || { echo "CRITICAL ERROR: dist/index.html missing!"; exit 1; }
-          test -f dist/.htaccess || { echo "CRITICAL ERROR: dist/.htaccess missing!"; exit 1; }
-          test -f dist/favicon.ico || { echo "CRITICAL ERROR: dist/favicon.ico missing!"; exit 1; }
-          test -f dist/robots.txt || { echo "CRITICAL ERROR: dist/robots.txt missing!"; exit 1; }
-          test -f dist/sitemap.xml || { echo "CRITICAL ERROR: dist/sitemap.xml missing!"; exit 1; }
-          test -d dist/assets || { echo "CRITICAL ERROR: dist/assets directory missing!"; exit 1; }
-          echo "=== All production payload files successfully verified ==="
-
-      - name: Publish to hostinger-deploy Branch
+      - name: Configure SSH with pinned Hostinger fingerprint
+        shell: bash
+        env:
+          DEPLOY_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+          DEPLOY_HOST: ${{ vars.HOSTINGER_HOST }}
+          DEPLOY_PORT: ${{ vars.HOSTINGER_PORT }}
+          EXPECTED_HOST_FINGERPRINT: ${{ vars.HOSTINGER_HOST_FINGERPRINT }}
         run: |
-          # 1. Stash compiled dist payload in temporary runner directory outside git tree
-          PAYLOAD_DIR="$RUNNER_TEMP/oloid_dist_payload"
-          mkdir -p "$PAYLOAD_DIR"
-          cp -a dist/. "$PAYLOAD_DIR/"
-
-          # 2. Configure Git identity for automated release
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # 3. Switch to or create the isolated deployment branch
-          if git show-ref --verify --quiet refs/remotes/origin/hostinger-deploy; then
-            echo "Branch hostinger-deploy exists remotely. Checking out..."
-            git checkout -B hostinger-deploy origin/hostinger-deploy
-            git rm -rf . || true
-          else
-            echo "Branch hostinger-deploy does not exist. Creating orphan branch..."
-            git checkout --orphan hostinger-deploy
-            git rm -rf . || true
+          set -euo pipefail
+          if [[ -z "$DEPLOY_KEY" || -z "$DEPLOY_HOST" || -z "$DEPLOY_PORT" || -z "$EXPECTED_HOST_FINGERPRINT" ]]; then
+            echo 'Missing SSH key, host details, or verified SSH host fingerprint' >&2
+            exit 1
           fi
-
-          # Clean any untracked leftover files in working tree (except .git)
-          find . -maxdepth 1 ! -name '.' ! -name '..' ! -name '.git' -exec rm -rf {} +
-
-          # 4. Copy production payload into the root of hostinger-deploy
-          cp -a "$PAYLOAD_DIR/." .
-
-          # 5. Sanity check: Ensure index.html and .htaccess are in the branch root
-          test -f index.html || { echo "DEPLOYMENT ABORT: index.html is missing in root!"; exit 1; }
-          test -f .htaccess || { echo "DEPLOYMENT ABORT: .htaccess is missing in root!"; exit 1; }
-
-          echo "=== Deployment branch root contents ==="
-          ls -la
-
-          # 6. Commit and push only production build artifacts
-          git add -A
-          if git diff-index --quiet HEAD --; then
-            echo "No changes detected on hostinger-deploy branch. Everything up to date."
-          else
-            git commit -m "deploy(production): automated build from commit ${GITHUB_SHA::8} [skip ci]"
-            git push origin hostinger-deploy
-            echo "=== Successfully published to hostinger-deploy branch ==="
+          umask 077
+          mkdir -p "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/oloid_deploy"
+          chmod 600 "$HOME/.ssh/oloid_deploy"
+          ssh-keygen -y -f "$HOME/.ssh/oloid_deploy" > /dev/null
+          ssh-keyscan -T 15 -p "$DEPLOY_PORT" -t ed25519 "$DEPLOY_HOST" 2>/dev/null > "$HOME/.ssh/known_hosts"
+          test -s "$HOME/.ssh/known_hosts"
+          ACTUAL_FINGERPRINT="$(ssh-keygen -lf "$HOME/.ssh/known_hosts" -E sha256 | awk 'NR == 1 {print $2}')"
+          if [[ "$ACTUAL_FINGERPRINT" != "$EXPECTED_HOST_FINGERPRINT" ]]; then
+            echo 'SSH server fingerprint mismatch. Deployment blocked.' >&2
+            exit 1
           fi
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+      - name: Upload release and publish to verified site directory
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ vars.HOSTINGER_HOST }}
+          DEPLOY_PORT: ${{ vars.HOSTINGER_PORT }}
+          DEPLOY_USER: ${{ vars.HOSTINGER_USER }}
+          DEPLOY_PATH: ${{ vars.HOSTINGER_PATH }}
+        run: |
+          set -euo pipefail
+          EXPECTED_ROOT='/home/u182346775/domains/oloid.company/public_html'
+          if [[ "$DEPLOY_PATH" != "$EXPECTED_ROOT" ]]; then
+            echo 'Hostinger path differs from the inspected document root; deployment blocked.' >&2
+            exit 1
+          fi
+          test -s dist/index.html
+          test -s dist/.htaccess
+          ARCHIVE="oloid-release-${GITHUB_SHA}.tar.gz"
+          tar -czf "$ARCHIVE" -C dist .
+          SSH_OPTIONS=(-i "$HOME/.ssh/oloid_deploy" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o BatchMode=yes -p "$DEPLOY_PORT")
+          scp -i "$HOME/.ssh/oloid_deploy" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o BatchMode=yes -P "$DEPLOY_PORT" \
+            "$ARCHIVE" "$DEPLOY_USER@$DEPLOY_HOST:/home/u182346775/$ARCHIVE"
+          ssh "${SSH_OPTIONS[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "RELEASE='/home/u182346775/$ARCHIVE' bash -se" <<'REMOTE_SCRIPT'
+          set -euo pipefail
+          ROOT='/home/u182346775/domains/oloid.company/public_html'
+          test -d "$ROOT"
+          test -f "$RELEASE"
+          BACKUP_DIR="$HOME/oloid-deploy-backups"
+          mkdir -p "$BACKUP_DIR"
+          NOW="$(date -u +%Y%m%dT%H%M%SZ)"
+          tar -czf "$BACKUP_DIR/before-$NOW.tar.gz" -C "$ROOT" .
+          STAGING="$(mktemp -d "$HOME/.oloid-stage-XXXXXXXX")"
+          trap 'rm -rf "$STAGING"; rm -f "$RELEASE"' EXIT
+          tar -xzf "$RELEASE" -C "$STAGING"
+          test -s "$STAGING/index.html"
+          test -s "$STAGING/.htaccess"
+          cp -a "$STAGING/." "$ROOT/"
+          test -s "$ROOT/index.html"
+          test -s "$ROOT/.htaccess"
+          if [[ -f "$ROOT/default.php" ]]; then
+            mv "$ROOT/default.php" "$BACKUP_DIR/default-retired-$NOW.php"
+          fi
+          REMOTE_SCRIPT
+
+      - name: Check published homepage
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error --max-time 45 \
+            'https://oloid.company/' -o published-home.html
+          grep -qi 'OLOID' published-home.html || {
+            echo 'Live page did not contain expected OLOID branding; check hosting and CDN cache.' >&2
+            exit 1
+          }
