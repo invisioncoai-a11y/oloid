@@ -42,3 +42,9 @@ debug_qa.py
 check_services.py
 __pycache__/
 *.pyc
+
+# Watchdog runtime state and secrets
+watchdog/watchdog.config.json
+watchdog/watchdog.state.json
+watchdog/watchdog.log
+.site_disabled_marker

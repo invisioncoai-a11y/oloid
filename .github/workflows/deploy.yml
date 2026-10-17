@@ -1,0 +1,104 @@
+name: Production Build & Hostinger Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hostinger-deploy
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    name: Build & Publish to hostinger-deploy Branch
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Code Quality & Lint Audit
+        run: npm run lint
+
+      - name: Build Static Production Distribution
+        run: npm run build
+
+      - name: Verify Distribution Payload Integrity
+        run: |
+          # Guarantee .htaccess is present in dist
+          if [ -f .htaccess ]; then
+            cp -f .htaccess dist/.htaccess
+          fi
+
+          echo "=== Auditing dist/ output directory ==="
+          ls -la dist/
+
+          # Confirm mandatory static hosting files
+          test -f dist/index.html || { echo "CRITICAL ERROR: dist/index.html missing!"; exit 1; }
+          test -f dist/.htaccess || { echo "CRITICAL ERROR: dist/.htaccess missing!"; exit 1; }
+          test -f dist/favicon.ico || { echo "CRITICAL ERROR: dist/favicon.ico missing!"; exit 1; }
+          test -f dist/robots.txt || { echo "CRITICAL ERROR: dist/robots.txt missing!"; exit 1; }
+          test -f dist/sitemap.xml || { echo "CRITICAL ERROR: dist/sitemap.xml missing!"; exit 1; }
+          test -d dist/assets || { echo "CRITICAL ERROR: dist/assets directory missing!"; exit 1; }
+          echo "=== All production payload files successfully verified ==="
+
+      - name: Publish to hostinger-deploy Branch
+        run: |
+          # 1. Stash compiled dist payload in temporary runner directory outside git tree
+          PAYLOAD_DIR="$RUNNER_TEMP/oloid_dist_payload"
+          mkdir -p "$PAYLOAD_DIR"
+          cp -a dist/. "$PAYLOAD_DIR/"
+
+          # 2. Configure Git identity for automated release
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # 3. Switch to or create the isolated deployment branch
+          if git show-ref --verify --quiet refs/remotes/origin/hostinger-deploy; then
+            echo "Branch hostinger-deploy exists remotely. Checking out..."
+            git checkout -B hostinger-deploy origin/hostinger-deploy
+            git rm -rf . || true
+          else
+            echo "Branch hostinger-deploy does not exist. Creating orphan branch..."
+            git checkout --orphan hostinger-deploy
+            git rm -rf . || true
+          fi
+
+          # Clean any untracked leftover files in working tree (except .git)
+          find . -maxdepth 1 ! -name '.' ! -name '..' ! -name '.git' -exec rm -rf {} +
+
+          # 4. Copy production payload into the root of hostinger-deploy
+          cp -a "$PAYLOAD_DIR/." .
+
+          # 5. Sanity check: Ensure index.html and .htaccess are in the branch root
+          test -f index.html || { echo "DEPLOYMENT ABORT: index.html is missing in root!"; exit 1; }
+          test -f .htaccess || { echo "DEPLOYMENT ABORT: .htaccess is missing in root!"; exit 1; }
+
+          echo "=== Deployment branch root contents ==="
+          ls -la
+
+          # 6. Commit and push only production build artifacts
+          git add -A
+          if git diff-index --quiet HEAD --; then
+            echo "No changes detected on hostinger-deploy branch. Everything up to date."
+          else
+            git commit -m "deploy(production): automated build from commit ${GITHUB_SHA::8} [skip ci]"
+            git push origin hostinger-deploy
+            echo "=== Successfully published to hostinger-deploy branch ==="
+          fi

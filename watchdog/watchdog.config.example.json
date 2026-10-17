@@ -1,0 +1,11 @@
+{
+  "expected_repo_id": 1422620252,
+  "repo_owner": "invisioncoai-a11y",
+  "repo_name": "oloid",
+  "github_token": "",
+  "consecutive_404_threshold": 3,
+  "state_file": "/home/uXXXXX/watchdog/watchdog.state.json",
+  "log_file": "/home/uXXXXX/watchdog/watchdog.log",
+  "marker_file": "/home/uXXXXX/.site_disabled_marker",
+  "dry_run": false
+}
